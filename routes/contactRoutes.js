@@ -1,6 +1,36 @@
 const express = require('express');
 const router = express.Router();
 const Contact = require('../models/Contact');
+const multer = require('multer');
+const path = require('path');
+const { sendResumeEmail } = require('../utils/emailService');
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: function (req, file, cb) {
+    const allowedTypes = /pdf|doc|docx/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (extname && mimetype) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only PDF, DOC, and DOCX files are allowed'));
+    }
+  }
+});
 
 // Get all contacts
 router.get('/', async (req, res) => {
@@ -13,11 +43,40 @@ router.get('/', async (req, res) => {
 });
 
 // Create new contact
-router.post('/', async (req, res) => {
+router.post('/', upload.single('resume'), async (req, res) => {
   try {
-    const contact = new Contact(req.body);
+    const contactData = {
+      name: req.body.name,
+      email: req.body.email,
+      phone: req.body.phone,
+      company: req.body.company,
+      message: req.body.message,
+      type: req.body.type || 'contact',
+      // Career-specific fields
+      position: req.body.position,
+      yearsOfExperience: req.body.yearsOfExperience,
+      currentCompany: req.body.currentCompany,
+      expectedSalary: req.body.expectedSalary,
+      noticePeriod: req.body.noticePeriod,
+      coverLetter: req.body.coverLetter,
+      howDidYouHear: req.body.howDidYouHear,
+      resume: req.file ? req.file.filename : null,
+    };
+
+    const contact = new Contact(contactData);
     const savedContact = await contact.save();
     res.status(201).json(savedContact);
+
+    if (contactData.type === 'career' && req.file) {
+      try {
+        await sendResumeEmail({
+          ...contactData,
+          resumePath: req.file.path,
+        });
+      } catch (emailError) {
+        console.error('Failed to send resume email:', emailError.message);
+      }
+    }
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -31,6 +90,23 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Contact not found' });
     }
     res.json({ message: 'Contact deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Update contact status
+router.put('/:id', async (req, res) => {
+  try {
+    const contact = await Contact.findByIdAndUpdate(
+      req.params.id,
+      { status: req.body.status },
+      { new: true }
+    );
+    if (!contact) {
+      return res.status(404).json({ message: 'Contact not found' });
+    }
+    res.json(contact);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
