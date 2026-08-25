@@ -11,6 +11,16 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const infoTransporter = nodemailer.createTransport({
+  host: process.env.INFO_SMTP_HOST,
+  port: Number(process.env.INFO_SMTP_PORT) || 587,
+  secure: process.env.INFO_SMTP_SECURE === 'true', // true for port 465, false for others
+  auth: {
+    user: process.env.INFO_SMTP_USER,
+    pass: process.env.INFO_SMTP_PASS,
+  },
+});
+
 // Sends a career application's resume to the recruitment inbox.
 async function sendResumeEmail(application) {
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
@@ -60,4 +70,33 @@ async function sendResumeEmail(application) {
   });
 }
 
-module.exports = { sendResumeEmail };
+// Sends a "Contact Us" form submission to the info inbox.
+async function sendContactEmail(contact) {
+  if (!process.env.INFO_SMTP_HOST || !process.env.INFO_SMTP_USER || !process.env.INFO_SMTP_PASS) {
+    console.warn('INFO SMTP is not configured; skipping contact email.');
+    return;
+  }
+
+  const { name, email, phone, company, message } = contact;
+
+  const recipient = process.env.INFO_EMAIL || 'info@pmg-b2b.com';
+
+  const html = `
+    <h2>New Contact Us Submission</h2>
+    <p><strong>Name:</strong> ${name}</p>
+    <p><strong>Email:</strong> ${email}</p>
+    <p><strong>Phone:</strong> ${phone || '-'}</p>
+    <p><strong>Company:</strong> ${company || '-'}</p>
+    <p><strong>Message:</strong><br/>${message || '-'}</p>
+  `;
+
+  await infoTransporter.sendMail({
+    from: `"PMG B2B Website" <${process.env.INFO_SMTP_USER}>`,
+    to: recipient,
+    replyTo: email,
+    subject: `New Contact Us Submission - ${name}`,
+    html,
+  });
+}
+
+module.exports = { sendResumeEmail, sendContactEmail };

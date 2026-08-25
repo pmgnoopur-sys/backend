@@ -3,7 +3,7 @@ const router = express.Router();
 const Contact = require('../models/Contact');
 const multer = require('multer');
 const path = require('path');
-const { sendResumeEmail } = require('../utils/emailService');
+const { sendResumeEmail, sendContactEmail } = require('../utils/emailService');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -75,6 +75,12 @@ router.post('/', upload.single('resume'), async (req, res) => {
         });
       } catch (emailError) {
         console.error('Failed to send resume email:', emailError.message);
+      }
+    } else if (contactData.type === 'contact') {
+      try {
+        await sendContactEmail(contactData);
+      } catch (emailError) {
+        console.error('Failed to send contact email:', emailError.message);
       }
     }
   } catch (error) {
