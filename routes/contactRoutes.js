@@ -22,9 +22,8 @@ const upload = multer({
   fileFilter: function (req, file, cb) {
     const allowedTypes = /pdf|doc|docx/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    
-    if (extname && mimetype) {
+
+    if (extname) {
       return cb(null, true);
     } else {
       cb(new Error('Only PDF, DOC, and DOCX files are allowed'));
@@ -67,11 +66,11 @@ router.post('/', upload.single('resume'), async (req, res) => {
     const savedContact = await contact.save();
     res.status(201).json(savedContact);
 
-    if (contactData.type === 'career' && req.file) {
+    if (contactData.type === 'career') {
       try {
         await sendResumeEmail({
           ...contactData,
-          resumePath: req.file.path,
+          resumePath: req.file ? req.file.path : undefined,
         });
       } catch (emailError) {
         console.error('Failed to send resume email:', emailError.message);
