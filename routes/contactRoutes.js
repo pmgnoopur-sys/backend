@@ -80,7 +80,7 @@ router.post('/', upload.single('resume'), async (req, res) => {
       try {
         await sendContactEmail(contactData);
       } catch (emailError) {
-        console.error('Failed to send contact email:', emailError.message);
+        console.error('Failed to send contact email:', emailError);
       }
     }
   } catch (error) {

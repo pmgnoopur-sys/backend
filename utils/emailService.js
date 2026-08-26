@@ -21,6 +21,26 @@ const infoTransporter = nodemailer.createTransport({
   },
 });
 
+if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error('[SMTP] recruitment transporter verify failed:', error);
+    } else {
+      console.log('[SMTP] recruitment transporter ready:', success);
+    }
+  });
+}
+
+if (process.env.INFO_SMTP_HOST && process.env.INFO_SMTP_USER && process.env.INFO_SMTP_PASS) {
+  infoTransporter.verify((error, success) => {
+    if (error) {
+      console.error('[SMTP] info transporter verify failed:', error);
+    } else {
+      console.log('[SMTP] info transporter ready:', success);
+    }
+  });
+}
+
 // Sends a career application's resume to the recruitment inbox.
 async function sendResumeEmail(application) {
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
@@ -90,13 +110,14 @@ async function sendContactEmail(contact) {
     <p><strong>Message:</strong><br/>${message || '-'}</p>
   `;
 
-  await infoTransporter.sendMail({
+  const info = await infoTransporter.sendMail({
     from: `"PMG B2B Website" <${process.env.INFO_SMTP_USER}>`,
     to: recipient,
     replyTo: email,
     subject: `New Contact Us Submission - ${name}`,
     html,
   });
+  console.log('Contact email sent:', info.messageId, info.response);
 }
 
 module.exports = { sendResumeEmail, sendContactEmail };
