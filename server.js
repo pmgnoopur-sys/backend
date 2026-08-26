@@ -29,7 +29,21 @@ app.use('/api/chat', require('./routes/chatRoutes'));
 
 // Health check route
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
+  res.json({
+    status: 'OK',
+    message: 'Server is running',
+    emailServiceLoaded: true,
+    smtp: {
+      recruitmentConfigured: Boolean(
+        process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS
+      ),
+      infoConfigured: Boolean(
+        process.env.INFO_SMTP_HOST && process.env.INFO_SMTP_USER && process.env.INFO_SMTP_PASS
+      ),
+      recruitmentRecipient: process.env.RECRUITMENT_EMAIL || null,
+      infoRecipient: process.env.INFO_EMAIL || null,
+    },
+  });
 });
 
 const PORT = process.env.PORT || 5000;
